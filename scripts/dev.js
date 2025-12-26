@@ -41,7 +41,7 @@ const pkg = require(resolve(__dirname, `../packages/${target}/package.json`))
 // 上下文对象可以用于后续的打包操作
 esbuild
   .context({
-    entryPoints: [entry], // 入口文件
+    entryPoints: [entry], // TypeScript入口文件
     outfile: resolve(__dirname, `../packages/${target}/dist/${target}.js`), // 出口文件
     bundle: true, // reactivity -> shared  会打包到一起
     platform: 'browser', // 打包后给浏览器使用

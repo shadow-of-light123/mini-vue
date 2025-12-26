@@ -1,4 +1,3 @@
-import { activeEffect } from './effect'
 import { track, trigger } from './reactiveEffect'
 
 export enum ReactiveFlags {

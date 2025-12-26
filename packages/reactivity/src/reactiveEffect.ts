@@ -15,7 +15,7 @@ const targetMap = new WeakMap()
 // }
 
 // 定义增强的Map类型接口
-interface DepMap extends Map<ReactiveEffect, number> {
+export interface DepMap extends Map<ReactiveEffect, number> {
   cleanup: () => void
   name: string | symbol
 }
@@ -44,7 +44,9 @@ export function track(target, key) {
     let dep = depsMap.get(key)
 
     if (!dep) {
-      depsMap.set(key, (dep = createDep(() => depsMap.delete(key), key))) // 后面用于清理不需要的属性
+      // () => depsMap.delete(key) 清理映射表的cleanup函数
+      dep = createDep(() => depsMap.delete(key), key)
+      depsMap.set(key, dep)
     }
 
     // 将当前的effect放入到dep（映射表）中，后续可以根据值的变化触发此dep中存放的effect
