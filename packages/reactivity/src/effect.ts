@@ -34,10 +34,13 @@ function postCleanEffect(effect: ReactiveEffect) {
   }
 }
 
+export let activeEffect: ReactiveEffect
+
 export class ReactiveEffect {
   _trackId = 0 // 用于记录当前effect执行了几次
   deps: Array<DepMap> = []
   _depslength = 0
+  _running = 0
 
   public active = true // 创建的effect是响应式的
   // fn 用户编写的函数
@@ -59,6 +62,7 @@ export class ReactiveEffect {
 
       // effect重新执行前，需要清理上一次的依赖  effect.deps
       preCleanEffect(this)
+      this._running++
 
       // 依赖收集 -> state.name  state.age
       return this.fn()
@@ -67,11 +71,11 @@ export class ReactiveEffect {
       // 依赖更新完毕之后，最后清理，所以放在finally块中
       postCleanEffect(this)
       activeEffect = lastEffect
+      // 防止嵌套
+      this._running--
     }
   }
 }
-
-export let activeEffect: ReactiveEffect
 
 function cleanDepEffect(dep: DepMap, effect: ReactiveEffect) {
   dep.delete(effect)
@@ -117,8 +121,11 @@ export function trackEffect(effect: ReactiveEffect, dep: DepMap) {
 
 export function triggerEffects(dep: DepMap) {
   for (const effect of dep.keys()) {
-    if (effect.scheduler) {
-      effect.scheduler() // -> effect.run()
+    // 如果不是正在执行，才能执行
+    if (!effect._running) {
+      if (effect.scheduler) {
+        effect.scheduler() // -> effect.run()
+      }
     }
   }
 }

@@ -33,3 +33,7 @@ function createReactiveObject(target) {
   reactiveMap.set(target, proxy)
   return proxy
 }
+
+export function toReactive(value) {
+  return isObject(value) ? reactive(value) : value
+}
