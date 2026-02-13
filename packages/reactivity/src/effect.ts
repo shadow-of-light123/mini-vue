@@ -1,3 +1,4 @@
+import { DirtyLevels } from './constants'
 import type { DepMap } from './reactiveEffect'
 
 export function effect(fn: () => any, options?: any) {
@@ -41,17 +42,33 @@ export class ReactiveEffect {
   deps: Array<DepMap> = []
   _depslength = 0
   _running = 0
+  _dirtyLevel = DirtyLevels.Dirty // 默认为脏
 
   public active = true // 创建的effect是响应式的
   // fn 用户编写的函数
   // 如果fn中依赖的数据发生变化后，需要重新调用scheduler -> run()
-  public fn: () => any
-  public scheduler: () => any
-  constructor(fn: () => any, scheduler: () => any) {
-    this.fn = fn
-    this.scheduler = scheduler
+  // public fn: () => any
+  // public scheduler: () => any
+  constructor(
+    public fn: () => any,
+    public scheduler: () => any,
+  ) {
+    // this.fn = fn
+    // this.scheduler = scheduler
   }
+
+  public get dirty() {
+    return this._dirtyLevel === DirtyLevels.Dirty
+  }
+
+  public set dirty(value) {
+    this._dirtyLevel = value ? DirtyLevels.Dirty : DirtyLevels.NoDirty
+  }
+
   run() {
+    // 每次运行后effect变为no_dirty
+    this._dirtyLevel = DirtyLevels.NoDirty
+
     // 让fn执行
     if (!this.active) {
       return this.fn() // 不是激活的，执行后，什么都不用做
@@ -73,6 +90,13 @@ export class ReactiveEffect {
       activeEffect = lastEffect
       // 防止嵌套
       this._running--
+    }
+  }
+  stop() {
+    if (this.active) {
+      this.active = false
+      preCleanEffect(this)
+      postCleanEffect(this)
     }
   }
 }
@@ -121,8 +145,12 @@ export function trackEffect(effect: ReactiveEffect, dep: DepMap) {
 
 export function triggerEffects(dep: DepMap) {
   for (const effect of dep.keys()) {
-    // 如果不是正在执行，才能执行
+    // 当前这个值是不脏的，但是触发更新需要将值变为脏值
+    if (effect._dirtyLevel < DirtyLevels.Dirty) {
+      effect._dirtyLevel = DirtyLevels.Dirty
+    }
     if (!effect._running) {
+      // 如果不是正在执行，才能执行
       if (effect.scheduler) {
         effect.scheduler() // -> effect.run()
       }

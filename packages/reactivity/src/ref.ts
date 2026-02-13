@@ -2,7 +2,8 @@
 
 import { activeEffect, trackEffect, triggerEffects } from './effect'
 import { toReactive } from './reactive'
-import { createDep } from './reactiveEffect'
+import { DepMap, createDep } from './reactiveEffect'
+import type { ComputedRefImpl } from './computed'
 
 // ref shallowRef
 export function ref(value: any) {
@@ -16,7 +17,7 @@ function createRef(value: any) {
 class RefImpl {
   __v_isRef = true // 增加ref标识
   _value // 用来保存ref的值
-  dep // 用于收集对应的effect
+  dep: DepMap // 用于收集对应的effect
   constructor(public _rawValue) {
     this._value = toReactive(_rawValue)
   }
@@ -34,14 +35,14 @@ class RefImpl {
   }
 }
 
-function trackRefValue(ref: RefImpl) {
+export function trackRefValue(ref: RefImpl | ComputedRefImpl) {
   if (activeEffect) {
-    ref.dep = createDep(() => (ref.dep = undefined), 'undefined')
+    ref.dep = ref.dep || createDep(() => (ref.dep = undefined), 'undefined')
     trackEffect(activeEffect, ref.dep)
   }
 }
 
-function triggerRefValue(ref: RefImpl) {
+export function triggerRefValue(ref: RefImpl | ComputedRefImpl) {
   let dep = ref.dep
   if (dep) {
     triggerEffects(dep)
@@ -50,7 +51,10 @@ function triggerRefValue(ref: RefImpl) {
 
 class ObjectRefImpl {
   __v_isRef = true // 增加ref标识
-  constructor(public _object, public _key) {}
+  constructor(
+    public _object,
+    public _key,
+  ) {}
   get value() {
     return this._object[this._key]
   }
@@ -77,7 +81,7 @@ export function toRefs(object: any) {
  * @param objectWithRef 包含 ref 类型属性的对象
  * @returns 代理后的对象，访问 ref 属性时自动返回其 value 值
  */
-export function proxyRef(objectWithRef: any) {
+export function proxyRefs(objectWithRef: any) {
   // 创建代理对象，实现自动脱 ref 功能
   return new Proxy(objectWithRef, {
     /**
@@ -116,4 +120,8 @@ export function proxyRef(objectWithRef: any) {
       }
     },
   })
+}
+
+export function isRef(value) {
+  return !!(value && value.__v_isRef)
 }
